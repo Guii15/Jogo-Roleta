@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cassino da Sorte v2</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Importa as ferramentas do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Disponibiliza as funções do Firebase globalmente para o script.js
+        window.firebase = {
+            initializeApp,
+            getAuth, signInAnonymously, onAuthStateChanged, signOut,
+            getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, increment
+        };
+    </script>
+</head>
+<body>
+
+    <!-- 1. TELA DE LOGIN -->
+    <div id="login-view" class="view-container">
+        <div class="game-container">
+            <h1 class="game-title">Cassino da Sorte</h1>
+            <p class="game-subtitle">Bem-vindo! Entre para jogar.</p>
+            <button id="login-button" class="btn btn-golden btn-large">Entrar como Convidado</button>
+        </div>
+    </div>
+
+    <!-- 2. TELA PRINCIPAL DO JOGO -->
+    <div id="game-view" class="view-container hidden">
+        <!-- Cabeçalho com Saldo e ID -->
+        <header class="game-header">
+            <div class="balance-info">
+                SALDO: <span id="balance-display">R$ 0,00</span>
+            </div>
+            <div class="user-info">
+                <span id="user-id-display">ID: ...</span>
+            </div>
+            <div class="header-buttons">
+                <button id="goto-wallet-button" class="btn btn-small">Carteira</button>
+                <button id="logout-button" class="btn btn-small btn-danger">Sair</button>
+            </div>
+        </header>
+
+        <!-- Container do Jogo (Roleta) -->
+        <div class="game-container">
+            <div class="reels" id="reels-container">
+                <div class="reel"><img src="https://assets.codepen.io/134/slot-question.png" alt="?"></div>
+                <div class="reel"><img src="https://assets.codepen.io/134/slot-question.png" alt="?"></div>
+                <div class="reel"><img src="https://assets.codepen.io/134/slot-question.png" alt="?"></div>
+            </div>
+
+            <div class="bet-control">
+                <span>APOSTA:</span>
+                <input type="number" id="bet-amount" value="10" min="5" max="1000" step="5">
+            </div>
+
+            <button id="spin-button" class="btn btn-golden btn-large">GIRAR!</button>
+            <p class="message-box" id="message-box">Boa sorte!</p>
+        </div>
+    </div>
+
+    <!-- 3. TELA DA CARTEIRA -->
+    <div id="wallet-view" class="view-container hidden">
+        <div class="game-container">
+            <h1 class="game-title">Carteira</h1>
+            <div class="wallet-balance">
+                Saldo Atual: <span id="wallet-balance">R$ 0,00</span>
+            </div>
+            
+            <p class="game-subtitle">Gira dinheiro fictício para continuar a jogar.</p>
+            
+            <div class="wallet-action">
+                <input type="number" id="wallet-amount" placeholder="Valor" min="10">
+                <button id="deposit-button" class="btn btn-small">Depositar</button>
+                <button id="withdraw-button" class="btn btn-small btn-danger">Sacar</button>
+            </div>
+            
+            <button id="goto-game-button" class="btn btn-golden btn-large">Voltar ao Jogo</button>
+        </div>
+    </div>
+
+    <!-- Nosso script principal -->
+    <script src="script.js" defer></script>
+</body>
+</html>
+

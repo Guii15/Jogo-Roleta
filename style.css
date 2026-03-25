@@ -1,0 +1,204 @@
+/* Reset Básico e Estilos Globais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #f0f0f0;
+    /* Fundo gradiente para um efeito de "foco de luz" */
+    background: radial-gradient(ellipse at center, #4a4a4a 0%, #1e1e1e 100%);
+}
+
+.app-container {
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+}
+
+/* Utilitário para esconder elementos */
+/* Esta é a classe mais importante para a navegação! */
+.hidden {
+    display: none !important;
+}
+
+/* Estilo do Container Principal do Jogo/Login/Carteira */
+.game-container {
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 30px;
+    border-radius: 20px;
+    text-align: center;
+    border: 2px solid #d4af37; /* Borda dourada */
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.4); /* Sombra dourada */
+    backdrop-filter: blur(5px);
+}
+
+/* Títulos */
+.main-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.8em;
+    color: #d4af37;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    font-size: 1.1em;
+    margin-bottom: 25px;
+    color: #ccc;
+}
+
+/* Header do Jogo (Novo) */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    background: rgba(0,0,0,0.3);
+    padding: 10px;
+    border-radius: 10px;
+}
+.user-info {
+    font-size: 0.9em;
+    text-align: left;
+}
+.user-info span {
+    display: block;
+}
+.header-buttons button {
+    margin-left: 10px;
+}
+
+/* Roleta */
+.reels {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.reel {
+    width: 100px;
+    height: 100px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Sombra interna para dar profundidade */
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+    overflow: hidden; /* Garante que a imagem não saia do container */
+}
+
+.reel img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain; /* Mantém a proporção da imagem */
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+}
+
+.reel.spinning img {
+    filter: blur(5px);
+    animation: shake 0.15s infinite;
+}
+
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    50% { transform: translate(-1px, -2px) rotate(-1deg); }
+    100% { transform: translate(1px, -1px) rotate(1deg); }
+}
+
+/* Controles de Aposta e Inputs */
+.bet-controls, .wallet-action {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+input[type="number"] {
+    width: 100px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid #555;
+    background-color: #2c2c2c;
+    color: #f0f0f0;
+    font-size: 1.2em;
+    text-align: center;
+}
+/* Estilo novo para o input da carteira */
+.wallet-action input {
+    width: 100%;
+}
+
+
+/* Caixa de Mensagem */
+#message-box {
+    margin-top: 20px;
+    font-size: 1.1em;
+    min-height: 40px;
+    color: #d4af37;
+}
+
+/* Estilos de Botões */
+.btn {
+    padding: 12px 20px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.btn-large {
+    width: 100%;
+    padding: 18px;
+    font-size: 1.6em;
+}
+
+.btn-golden {
+    color: #2c2c2c;
+    background: linear-gradient(145deg, #f0e68c, #d4af37);
+    box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+}
+.btn-golden:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.5);
+}
+
+.btn-secondary {
+    background: #555;
+    color: #f0f0f0;
+}
+
+.btn-danger {
+    background: #a04040;
+    color: #f0f0f0;
+}
+
+.btn:disabled {
+    background: #7f8c8d;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Estilos Específicos da Carteira (Novos) */
+.wallet-balance {
+    font-size: 1.5em;
+    margin-bottom: 30px;
+    color: #f0f0f0;
+}
+.wallet-balance span {
+    color: #d4af37;
+    font-weight: bold;
+}
+
