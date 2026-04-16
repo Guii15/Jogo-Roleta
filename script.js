@@ -374,10 +374,11 @@ async function handleSpin() {
     isSpinning = true;
     ui.spinButton.disabled = true;
     ui.messageBox.textContent = "Girando...";
-    const reels = Array.from(ui.reelsContainer.children).map(reel => reel.querySelector('img'));
-    reels.forEach(reelImg => {
-        reelImg.classList.add('spinning');
-        reelImg.src = "https://assets.codepen.io/134/slot-question.png"; // Volta para '?'
+    // Guardamos os divs .reel (não as imgs), pois o CSS anima via '.reel.spinning img'
+    const reelDivs = Array.from(ui.reelsContainer.children);
+    reelDivs.forEach(reelDiv => {
+        reelDiv.classList.add('spinning'); // classe vai no div pai, não na img
+        reelDiv.querySelector('img').src = "https://assets.codepen.io/134/slot-question.png";
     });
 
     // --- 3. Pagar a Aposta (no Cofre) ---
@@ -420,11 +421,18 @@ async function handleSpin() {
         ui.messageBox.textContent = data.message;
         
         if (data.winAmount > 0) {
-            // Se ganhou, paga o prémio
+            // Se ganhou, paga o prémio e aciona o efeito visual
             await updateDoc(userDocRef, {
                 balance: increment(data.winAmount)
             });
             console.log(`Prémio de ${data.winAmount} pago.`);
+
+            // Adiciona a classe 'winner' em todos os rolos para piscar em dourado
+            // A animação CSS dura 0.5s × 4 repetições = 2s, depois removemos a classe
+            reelDivs.forEach(reelDiv => reelDiv.classList.add('winner'));
+            setTimeout(() => {
+                reelDivs.forEach(reelDiv => reelDiv.classList.remove('winner'));
+            }, 2000);
         }
 
     } catch (error) {
@@ -440,7 +448,7 @@ async function handleSpin() {
         }
     } finally {
         // --- 6. Terminar o Giro (Visual) ---
-        reels.forEach(reelImg => reelImg.classList.remove('spinning'));
+        reelDivs.forEach(reelDiv => reelDiv.classList.remove('spinning'));
         isSpinning = false;
         // A re-ativação do botão é tratada pelo 'updateBalanceUI'
         // Mas podemos forçar uma verificação
@@ -487,7 +495,6 @@ function main() {
     // 2. Ouve por mudanças no valor da aposta para desativar o botão
     ui.betAmountInput.addEventListener('input', async () => {
         if (!currentUserId) return;
-        const currentBet = parseInt(ui.betAmountInput.value, 10) || 0;
         const docSnap = await getDoc(doc(db, "artifacts", "cassino-da-sorte", "users", currentUserId));
         const currentBalance = docSnap.data().balance;
         updateBalanceUI(currentBalance); // Re-valida o saldo vs aposta

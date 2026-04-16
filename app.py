@@ -28,6 +28,11 @@ def spin():
     data = request.get_json()
     aposta = data.get('bet', 10) # Pega o valor de 'bet' ou usa 10 como padrão
 
+    # Validação: garante que a aposta é um número positivo dentro de um limite razoável
+    # Sem isso, alguém poderia mandar bet=-100 e ganhar dinheiro sem jogar
+    if not isinstance(aposta, (int, float)) or aposta <= 0 or aposta > 10000:
+        return jsonify({"error": "Aposta inválida."}), 400
+
     # Sorteia 3 símbolos usando os pesos definidos
     resultado_roleta = random.choices(lista_simbolos, weights=lista_pesos, k=3)
     

@@ -40,7 +40,7 @@ body {
 }
 
 /* Títulos */
-.main-title {
+.game-title {
     font-family: 'Playfair Display', serif;
     font-size: 2.8em;
     color: #d4af37;
@@ -48,7 +48,7 @@ body {
     margin-bottom: 10px;
 }
 
-.subtitle {
+.game-subtitle {
     font-size: 1.1em;
     margin-bottom: 25px;
     color: #ccc;
@@ -114,8 +114,20 @@ body {
     100% { transform: translate(1px, -1px) rotate(1deg); }
 }
 
+/* Pulsação dourada quando o jogador ganha */
+.reel.winner {
+    border: 3px solid #d4af37;
+    animation: winner-pulse 0.5s ease-in-out 4;
+}
+
+@keyframes winner-pulse {
+    0%   { box-shadow: inset 0 0 15px rgba(0,0,0,0.6); }
+    50%  { box-shadow: 0 0 25px 8px rgba(212, 175, 55, 0.8); }
+    100% { box-shadow: inset 0 0 15px rgba(0,0,0,0.6); }
+}
+
 /* Controles de Aposta e Inputs */
-.bet-controls, .wallet-action {
+.bet-control, .wallet-action {
     margin-bottom: 20px;
     display: flex;
     justify-content: center;
