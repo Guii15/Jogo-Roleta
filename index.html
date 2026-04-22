@@ -3,23 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cassino da Sorte v2</title>
-    
-    <!-- Google Fonts -->
+    <title>Cassino da Sorte</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase: importado como módulo ES e exposto globalmente para o script.js -->
     <script type="module">
-        // Importa as ferramentas do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Disponibiliza as funções do Firebase globalmente para o script.js
         window.firebase = {
             initializeApp,
             getAuth, signInAnonymously, onAuthStateChanged, signOut,
@@ -29,71 +26,188 @@
 </head>
 <body>
 
-    <!-- 1. TELA DE LOGIN -->
+    <!-- =============================================
+         TELA 1: LOGIN
+         ============================================= -->
     <div id="login-view" class="view-container">
-        <div class="game-container">
-            <h1 class="game-title">Cassino da Sorte</h1>
-            <p class="game-subtitle">Bem-vindo! Entre para jogar.</p>
-            <button id="login-button" class="btn btn-golden btn-large">Entrar como Convidado</button>
+        <div class="login-page">
+
+            <div class="login-brand">
+                <div class="brand-icon">🎰</div>
+                <h1 class="brand-name">Cassino da Sorte</h1>
+                <p class="brand-tagline">Fortuna favorece os corajosos</p>
+            </div>
+
+            <div class="login-card">
+                <div class="login-bonus-badge">🎁 Bônus de Boas-vindas</div>
+                <p class="login-card-text">
+                    Novos jogadores recebem <strong>R$ 100,00</strong> de créditos grátis!
+                </p>
+                <button id="login-button" class="btn btn-golden btn-large btn-block">
+                    Entrar como Convidado
+                </button>
+                <p class="disclaimer">Jogo fictício &bull; Sem dinheiro real &bull; Apenas para diversão</p>
+            </div>
+
         </div>
     </div>
 
-    <!-- 2. TELA PRINCIPAL DO JOGO -->
+
+    <!-- =============================================
+         TELA 2: JOGO
+         ============================================= -->
     <div id="game-view" class="view-container hidden">
-        <!-- Cabeçalho com Saldo e ID -->
-        <header class="game-header">
-            <div class="balance-info">
-                SALDO: <span id="balance-display">R$ 0,00</span>
+
+        <!-- Cabeçalho fixo -->
+        <header class="page-header">
+            <div class="header-brand">
+                <span class="header-brand-icon">🎰</span>
+                <span class="header-brand-name">Cassino da Sorte</span>
             </div>
-            <div class="user-info">
-                <span id="user-id-display">ID: ...</span>
+            <div class="balance-widget">
+                <span class="balance-label">SALDO</span>
+                <span id="balance-display" class="balance-amount">R$ 0,00</span>
             </div>
-            <div class="header-buttons">
-                <button id="goto-wallet-button" class="btn btn-small">Carteira</button>
-                <button id="logout-button" class="btn btn-small btn-danger">Sair</button>
+            <div class="header-actions">
+                <span id="user-id-display" class="user-badge">Jogador</span>
+                <button id="goto-wallet-button" class="btn btn-outline btn-small">Carteira</button>
+                <button id="logout-button" class="btn btn-danger btn-small">Sair</button>
             </div>
         </header>
 
-        <!-- Container do Jogo (Roleta) -->
-        <div class="game-container">
-            <div class="reels" id="reels-container">
-                <div class="reel"><img src="https://assets.codepen.io/134/slot-question.png" alt="?"></div>
-                <div class="reel"><img src="https://assets.codepen.io/134/slot-question.png" alt="?"></div>
-                <div class="reel"><img src="https://assets.codepen.io/134/slot-question.png" alt="?"></div>
+        <main class="game-main">
+
+            <!-- Máquina caça-níquel -->
+            <div class="slot-machine">
+
+                <!-- Luzes decorativas do topo -->
+                <div class="machine-lights">
+                    <span class="light"></span>
+                    <span class="light"></span>
+                    <span class="light"></span>
+                    <span class="light"></span>
+                    <span class="light"></span>
+                </div>
+
+                <!-- Os 3 rolos. Cada .reel é a "janela" e .reel-strip é a faixa que rola -->
+                <div class="reels-frame">
+                    <div class="reels" id="reels-container">
+                        <div class="reel"><div class="reel-strip"></div></div>
+                        <div class="reel"><div class="reel-strip"></div></div>
+                        <div class="reel"><div class="reel-strip"></div></div>
+                    </div>
+                </div>
+
+                <!-- Luzes decorativas do fundo -->
+                <div class="machine-lights">
+                    <span class="light"></span>
+                    <span class="light"></span>
+                    <span class="light"></span>
+                    <span class="light"></span>
+                    <span class="light"></span>
+                </div>
+
+                <!-- Controles: ajuste de aposta + botão girar -->
+                <div class="controls-area">
+                    <div class="bet-control">
+                        <button class="btn-adj" id="bet-down">−</button>
+                        <div class="bet-display">
+                            <label class="bet-label">APOSTA</label>
+                            <input type="number" id="bet-amount" value="10" min="5" max="1000" step="5">
+                        </div>
+                        <button class="btn-adj" id="bet-up">+</button>
+                    </div>
+                    <button id="spin-button" class="btn btn-golden btn-spin">GIRAR!</button>
+                </div>
+
+                <div class="message-area">
+                    <p class="message-box" id="message-box">Boa sorte!</p>
+                </div>
+
             </div>
 
-            <div class="bet-control">
-                <span>APOSTA:</span>
-                <input type="number" id="bet-amount" value="10" min="5" max="1000" step="5">
+            <!-- Tabela de prêmios -->
+            <div class="paytable">
+                <h3 class="paytable-title">Tabela de Prêmios</h3>
+                <div class="paytable-list">
+                    <div class="paytable-row">
+                        <img src="https://img.icons8.com/fluency/40/orange.png" alt="Laranja">
+                        <span>Laranja × Laranja × Laranja</span>
+                        <span class="paytable-mult">× 2</span>
+                    </div>
+                    <div class="paytable-row">
+                        <img src="https://img.icons8.com/fluency/40/cherry.png" alt="Cereja">
+                        <span>Cereja × Cereja × Cereja</span>
+                        <span class="paytable-mult">× 3</span>
+                    </div>
+                    <div class="paytable-row">
+                        <img src="https://img.icons8.com/fluency/40/bell.png" alt="Sino">
+                        <span>Sino × Sino × Sino</span>
+                        <span class="paytable-mult">× 5</span>
+                    </div>
+                    <div class="paytable-row">
+                        <img src="https://img.icons8.com/fluency/40/bar.png" alt="BAR">
+                        <span>BAR × BAR × BAR</span>
+                        <span class="paytable-mult">× 10</span>
+                    </div>
+                    <div class="paytable-row">
+                        <img src="https://img.icons8.com/fluency/40/7.png" alt="7">
+                        <span>7 × 7 × 7</span>
+                        <span class="paytable-mult paytable-mult--hot">× 20</span>
+                    </div>
+                    <div class="paytable-row paytable-row--jackpot">
+                        <img src="https://img.icons8.com/fluency/40/tiger.png" alt="Tigre">
+                        <span>Tigre × Tigre × Tigre</span>
+                        <span class="paytable-mult paytable-mult--jackpot">× 50 🏆</span>
+                    </div>
+                </div>
             </div>
 
-            <button id="spin-button" class="btn btn-golden btn-large">GIRAR!</button>
-            <p class="message-box" id="message-box">Boa sorte!</p>
-        </div>
+        </main>
     </div>
 
-    <!-- 3. TELA DA CARTEIRA -->
+
+    <!-- =============================================
+         TELA 3: CARTEIRA
+         ============================================= -->
     <div id="wallet-view" class="view-container hidden">
-        <div class="game-container">
-            <h1 class="game-title">Carteira</h1>
-            <div class="wallet-balance">
-                Saldo Atual: <span id="wallet-balance">R$ 0,00</span>
+
+        <header class="page-header">
+            <div class="header-brand">
+                <span class="header-brand-icon">🎰</span>
+                <span class="header-brand-name">Cassino da Sorte</span>
             </div>
-            
-            <p class="game-subtitle">Gira dinheiro fictício para continuar a jogar.</p>
-            
-            <div class="wallet-action">
-                <input type="number" id="wallet-amount" placeholder="Valor" min="10">
-                <button id="deposit-button" class="btn btn-small">Depositar</button>
-                <button id="withdraw-button" class="btn btn-small btn-danger">Sacar</button>
+            <div class="balance-widget">
+                <span class="balance-label">SALDO</span>
+                <span id="wallet-balance" class="balance-amount">R$ 0,00</span>
             </div>
-            
-            <button id="goto-game-button" class="btn btn-golden btn-large">Voltar ao Jogo</button>
-        </div>
+            <div class="header-actions">
+                <button id="goto-game-button" class="btn btn-outline btn-small">← Voltar ao Jogo</button>
+            </div>
+        </header>
+
+        <main class="wallet-main">
+            <div class="wallet-card">
+                <h2 class="wallet-title">Minha Carteira</h2>
+                <p class="wallet-subtitle">Gerencie seus créditos fictícios</p>
+
+                <div class="wallet-form">
+                    <label class="form-label" for="wallet-amount">Valor (créditos)</label>
+                    <input type="number" id="wallet-amount" class="form-input" placeholder="Ex: 100" min="10">
+                    <div class="wallet-actions">
+                        <button id="deposit-button" class="btn btn-success btn-large">⬆ Depositar</button>
+                        <button id="withdraw-button" class="btn btn-danger btn-large">⬇ Sacar</button>
+                    </div>
+                </div>
+
+                <div class="wallet-info">
+                    <p>💡 Créditos são fictícios e servem apenas para jogar neste site.</p>
+                </div>
+            </div>
+        </main>
+
     </div>
 
-    <!-- Nosso script principal -->
     <script src="script.js" defer></script>
 </body>
 </html>
-
