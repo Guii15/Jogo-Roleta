@@ -1,5 +1,41 @@
-/* Reset Básico e Estilos Globais */
-* {
+/* =============================================
+   VARIÁVEIS GLOBAIS
+   Por que usar variáveis? Muda uma cor aqui e
+   ela atualiza em TODO o site automaticamente.
+   ============================================= */
+:root {
+    --bg-darkest:  #07070f;
+    --bg-dark:     #0f0f1e;
+    --bg-card:     #1a1a30;
+    --bg-card-2:   #141428;
+    --bg-header:   rgba(10, 10, 20, 0.96);
+
+    --gold:        #d4af37;
+    --gold-light:  #f0d968;
+    --gold-dim:    rgba(212, 175, 55, 0.12);
+    --gold-glow:   rgba(212, 175, 55, 0.4);
+
+    --text:        #f0f0f0;
+    --text-muted:  #8080a0;
+
+    --danger:      #c0392b;
+    --success:     #27ae60;
+    --outline:     rgba(212, 175, 55, 0.25);
+
+    --reel-size:   110px;   /* lado do quadrado de cada rolo */
+
+    --radius-sm:   8px;
+    --radius-md:   14px;
+    --radius-lg:   22px;
+
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-gold: 0 0 24px rgba(212, 175, 55, 0.25);
+}
+
+/* =============================================
+   RESET & BASE
+   ============================================= */
+*, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -7,210 +43,635 @@
 
 body {
     font-family: 'Roboto', sans-serif;
+    background-color: var(--bg-darkest);
+    /* Gradientes sutis nos cantos para profundidade */
+    background-image:
+        radial-gradient(ellipse at 15% 60%, rgba(100, 60, 0, 0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(60, 0, 100, 0.07) 0%, transparent 55%);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+/* Esconde elementos sem deletar do DOM */
+.hidden { display: none !important; }
+
+/* =============================================
+   HEADER (cabeçalho fixo no topo)
+   ============================================= */
+.page-header {
+    position: sticky;         /* gruda no topo ao rolar */
+    top: 0;
+    z-index: 100;             /* fica na frente de todo conteúdo */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--outline);
+    backdrop-filter: blur(12px);   /* efeito vidro fosco */
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.header-brand-icon { font-size: 1.5rem; }
+
+.header-brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    color: var(--gold);
+    white-space: nowrap;
+}
+
+/* Widget de saldo centralizado no header */
+.balance-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--gold-dim);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-sm);
+    padding: 6px 22px;
+    flex-shrink: 0;
+}
+
+.balance-label {
+    font-size: 0.6rem;
+    letter-spacing: 2.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.balance-amount {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1.3;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* Bolinha com o ID curto do jogador */
+.user-badge {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid #2a2a40;
+    white-space: nowrap;
+}
+
+/* =============================================
+   LOGIN
+   ============================================= */
+.view-container { min-height: 100vh; }
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 36px;
+}
+
+.login-brand { text-align: center; }
+
+/* Ícone flutuando com animação CSS pura */
+.brand-icon {
+    font-size: 4.5rem;
+    display: block;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.5));
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-12px); }
+}
+
+.brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    color: var(--gold);
+    text-shadow: 0 0 40px var(--gold-glow);
+    line-height: 1.1;
+}
+
+.brand-tagline {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    letter-spacing: 1.5px;
+}
+
+.login-card {
+    background: var(--bg-card);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-lg);
+    padding: 40px 48px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow-card), var(--shadow-gold);
+}
+
+.login-bonus-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 6px 18px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+}
+
+.login-card-text {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+
+.login-card-text strong {
+    color: var(--gold-light);
+    font-size: 1.05rem;
+}
+
+.disclaimer {
+    font-size: 0.7rem;
+    color: #444;
+    margin-top: 18px;
+    letter-spacing: 0.5px;
+}
+
+/* =============================================
+   TELA DO JOGO
+   ============================================= */
+.game-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 20px 48px;
+    gap: 24px;
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+/* =============================================
+   SLOT MACHINE (o coração do jogo)
+   ============================================= */
+.slot-machine {
+    width: 100%;
+    background: var(--bg-card);
+    border: 2px solid var(--outline);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px 28px;
+    box-shadow: var(--shadow-card), var(--shadow-gold);
+    text-align: center;
+}
+
+/* Luzes decorativas — bolinhas que piscam em sequência */
+.machine-lights {
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    color: #f0f0f0;
-    /* Fundo gradiente para um efeito de "foco de luz" */
-    background: radial-gradient(ellipse at center, #4a4a4a 0%, #1e1e1e 100%);
+    gap: 14px;
+    margin: 6px 0;
 }
 
-.app-container {
-    width: 100%;
-    max-width: 500px;
-    padding: 20px;
+.light {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: blink 1.4s ease-in-out infinite alternate;
 }
 
-/* Utilitário para esconder elementos */
-/* Esta é a classe mais importante para a navegação! */
-.hidden {
-    display: none !important;
+/* Cada bolinha começa em um momento diferente → efeito cascata */
+.light:nth-child(1) { animation-delay: 0.0s; }
+.light:nth-child(2) { animation-delay: 0.2s; }
+.light:nth-child(3) { animation-delay: 0.4s; }
+.light:nth-child(4) { animation-delay: 0.6s; }
+.light:nth-child(5) { animation-delay: 0.8s; }
+
+@keyframes blink {
+    0%   { opacity: 1;   box-shadow: 0 0 8px var(--gold); }
+    100% { opacity: 0.2; box-shadow: none; }
 }
 
-/* Estilo do Container Principal do Jogo/Login/Carteira */
-.game-container {
-    background-color: rgba(0, 0, 0, 0.4);
-    padding: 30px;
-    border-radius: 20px;
-    text-align: center;
-    border: 2px solid #d4af37; /* Borda dourada */
-    box-shadow: 0 0 30px rgba(212, 175, 55, 0.4); /* Sombra dourada */
-    backdrop-filter: blur(5px);
+/* Moldura dos rolos — caixa escura com sombra interna */
+.reels-frame {
+    background: var(--bg-card-2);
+    border: 2px solid #252540;
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin: 14px 0;
+    box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.7);
 }
 
-/* Títulos */
-.game-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.8em;
-    color: #d4af37;
-    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
-    margin-bottom: 10px;
-}
-
-.game-subtitle {
-    font-size: 1.1em;
-    margin-bottom: 25px;
-    color: #ccc;
-}
-
-/* Header do Jogo (Novo) */
-.game-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    background: rgba(0,0,0,0.3);
-    padding: 10px;
-    border-radius: 10px;
-}
-.user-info {
-    font-size: 0.9em;
-    text-align: left;
-}
-.user-info span {
-    display: block;
-}
-.header-buttons button {
-    margin-left: 10px;
-}
-
-/* Roleta */
 .reels {
     display: flex;
     justify-content: center;
-    gap: 15px;
-    margin-bottom: 25px;
+    gap: 14px;
 }
 
+/* Cada .reel é a "janela" — mostra só 1 símbolo por vez */
 .reel {
-    width: 100px;
-    height: 100px;
-    background-color: rgba(0, 0, 0, 0.3);
-    border-radius: 15px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /* Sombra interna para dar profundidade */
-    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
-    overflow: hidden; /* Garante que a imagem não saia do container */
+    width: var(--reel-size);
+    height: var(--reel-size);
+    background: var(--bg-darkest);
+    border-radius: var(--radius-sm);
+    overflow: hidden;                          /* CHAVE: esconde o que sai da janela */
+    border: 2px solid #252545;
+    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.8);
+    position: relative;
 }
 
-.reel img {
-    width: 80%;
-    height: 80%;
-    object-fit: contain; /* Mantém a proporção da imagem */
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+/* Linhas horizontais sutis que "marcam" o símbolo central */
+.reel::before,
+.reel::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+    z-index: 2;
+    pointer-events: none;
 }
+.reel::before { top: 8px; }
+.reel::after  { bottom: 8px; }
 
-.reel.spinning img {
-    filter: blur(5px);
-    animation: shake 0.15s infinite;
-}
-
-@keyframes shake {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    50% { transform: translate(-1px, -2px) rotate(-1deg); }
-    100% { transform: translate(1px, -1px) rotate(1deg); }
-}
-
-/* Pulsação dourada quando o jogador ganha */
+/* Efeito dourado pulsante quando ganha */
 .reel.winner {
-    border: 3px solid #d4af37;
+    border-color: var(--gold);
     animation: winner-pulse 0.5s ease-in-out 4;
 }
 
 @keyframes winner-pulse {
-    0%   { box-shadow: inset 0 0 15px rgba(0,0,0,0.6); }
-    50%  { box-shadow: 0 0 25px 8px rgba(212, 175, 55, 0.8); }
-    100% { box-shadow: inset 0 0 15px rgba(0,0,0,0.6); }
+    0%   { box-shadow: inset 0 0 24px rgba(0,0,0,0.8); }
+    50%  { box-shadow: 0 0 32px 8px var(--gold-glow), inset 0 0 24px rgba(0,0,0,0.8); }
+    100% { box-shadow: inset 0 0 24px rgba(0,0,0,0.8); }
 }
 
-/* Controles de Aposta e Inputs */
-.bet-control, .wallet-action {
-    margin-bottom: 20px;
+/* .reel-strip é a faixa vertical que sobe/desce dentro da janela */
+.reel-strip {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    will-change: transform;   /* avisa o browser para usar GPU nessa animação */
 }
+
+/* Cada imagem ocupa exatamente 1 "slot" (mesmo tamanho da janela) */
+.reel-strip img {
+    width: var(--reel-size);
+    height: var(--reel-size);
+    object-fit: contain;
+    padding: 14px;
+    flex-shrink: 0;           /* impede que as imagens encolham */
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+}
+
+/* Desfoca o rolo enquanto aguarda a resposta do servidor */
+.reel.pre-spinning .reel-strip {
+    filter: blur(3px);
+    opacity: 0.5;
+    transition: filter 0.2s, opacity 0.2s;
+}
+
+/* =============================================
+   CONTROLES DE APOSTA
+   ============================================= */
+.controls-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: 18px 0 14px;
+    flex-wrap: wrap;
+}
+
+/* Container dos botões − e do input de aposta */
+.bet-control {
+    display: flex;
+    align-items: center;
+    background: var(--bg-card-2);
+    border: 1px solid #2a2a45;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+/* Botões − e + */
+.btn-adj {
+    background: #1e1e38;
+    color: var(--gold);
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem;
+    font-weight: 700;
+    width: 46px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    line-height: 1;
+    user-select: none;
+}
+
+.btn-adj:hover  { background: #2a2a50; }
+.btn-adj:active { background: var(--gold-dim); }
+
+.bet-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.bet-label {
+    font-size: 0.58rem;
+    letter-spacing: 2.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+/* Remove as setinhas nativas do input número */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
 
 input[type="number"] {
-    width: 100px;
-    padding: 10px;
-    border-radius: 8px;
-    border: 2px solid #555;
-    background-color: #2c2c2c;
-    color: #f0f0f0;
-    font-size: 1.2em;
-    text-align: center;
-}
-/* Estilo novo para o input da carteira */
-.wallet-action input {
-    width: 100%;
-}
-
-
-/* Caixa de Mensagem */
-#message-box {
-    margin-top: 20px;
-    font-size: 1.1em;
-    min-height: 40px;
-    color: #d4af37;
-}
-
-/* Estilos de Botões */
-.btn {
-    padding: 12px 20px;
-    font-size: 1.1em;
-    font-weight: bold;
+    width: 80px;
+    background: transparent;
     border: none;
-    border-radius: 10px;
+    color: var(--gold-light);
+    font-size: 1.35rem;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* =============================================
+   BOTÕES
+   ============================================= */
+.btn {
+    border: none;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all 0.3s ease;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
     text-transform: uppercase;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .btn-large {
-    width: 100%;
-    padding: 18px;
-    font-size: 1.6em;
+    padding: 15px 28px;
+    font-size: 0.95rem;
 }
 
+/* Ocupa a largura total do pai */
+.btn-block { width: 100%; }
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 0.78rem;
+}
+
+/* O botão GIRAR tem tamanho próprio */
+.btn-spin {
+    padding: 18px 52px;
+    font-size: 1.25rem;
+    border-radius: var(--radius-md);
+    letter-spacing: 2px;
+}
+
+/* Gradiente dourado */
 .btn-golden {
-    color: #2c2c2c;
-    background: linear-gradient(145deg, #f0e68c, #d4af37);
-    box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
-}
-.btn-golden:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.5);
+    background: linear-gradient(145deg, var(--gold-light), var(--gold), #a88920);
+    color: #100800;
+    box-shadow: 0 4px 20px var(--gold-glow);
 }
 
-.btn-secondary {
-    background: #555;
-    color: #f0f0f0;
+.btn-golden:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px var(--gold-glow);
+    filter: brightness(1.08);
+}
+
+.btn-golden:active:not(:disabled) { transform: translateY(0); }
+
+.btn-golden:disabled {
+    background: #2a2a2a;
+    color: #555;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* Borda dourada transparente */
+.btn-outline {
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--outline);
+}
+
+.btn-outline:hover {
+    background: var(--gold-dim);
+    border-color: var(--gold);
 }
 
 .btn-danger {
-    background: #a04040;
-    color: #f0f0f0;
+    background: var(--danger);
+    color: white;
 }
 
-.btn:disabled {
-    background: #7f8c8d;
-    cursor: not-allowed;
-    opacity: 0.6;
+.btn-danger:hover { background: #e74c3c; transform: translateY(-1px); }
+
+.btn-success {
+    background: var(--success);
+    color: white;
 }
 
-/* Estilos Específicos da Carteira (Novos) */
-.wallet-balance {
-    font-size: 1.5em;
-    margin-bottom: 30px;
-    color: #f0f0f0;
-}
-.wallet-balance span {
-    color: #d4af37;
-    font-weight: bold;
+.btn-success:hover { background: #2ecc71; transform: translateY(-1px); }
+
+/* =============================================
+   MENSAGEM DE RESULTADO
+   ============================================= */
+.message-area {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 8px;
 }
 
+.message-box {
+    font-size: 0.9rem;
+    color: var(--gold);
+    padding: 8px 24px;
+    border-radius: 20px;
+    background: var(--gold-dim);
+    border: 1px solid transparent;
+}
+
+/* =============================================
+   TABELA DE PRÊMIOS
+   ============================================= */
+.paytable {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    box-shadow: var(--shadow-card);
+}
+
+.paytable-title {
+    font-family: 'Playfair Display', serif;
+    color: var(--gold);
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.paytable-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.paytable-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card-2);
+    transition: background 0.2s;
+}
+
+.paytable-row:hover { background: #1e1e38; }
+
+.paytable-row img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.paytable-row span:nth-child(2) {
+    flex: 1;
+    font-size: 0.83rem;
+    color: var(--text-muted);
+}
+
+.paytable-mult {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--gold);
+}
+
+.paytable-mult--hot     { color: #e74c3c; }
+.paytable-mult--jackpot { color: var(--gold-light); font-size: 0.95rem; }
+
+/* Linha do jackpot tem destaque especial */
+.paytable-row--jackpot {
+    border: 1px solid var(--outline);
+    background: linear-gradient(135deg, #1c1c34, #26264a);
+}
+
+/* =============================================
+   CARTEIRA
+   ============================================= */
+.wallet-main {
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+.wallet-card {
+    background: var(--bg-card);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-lg);
+    padding: 40px 44px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: var(--shadow-card), var(--shadow-gold);
+}
+
+.wallet-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    color: var(--gold);
+    margin-bottom: 6px;
+}
+
+.wallet-subtitle {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 32px;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--bg-card-2);
+    border: 1px solid #2a2a45;
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 1.1rem;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 18px;
+    font-family: 'Roboto', sans-serif;
+}
+
+.form-input:focus   { border-color: var(--gold); }
+.form-input::placeholder { color: #333; }
+
+/* Grid de 2 colunas para os botões depositar/sacar */
+.wallet-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.wallet-info {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid #1e1e38;
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.7;
+}

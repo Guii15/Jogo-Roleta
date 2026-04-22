@@ -347,6 +347,60 @@ async function handleTransaction(type) {
 
 // --- Lógica do Jogo (Girar a Roleta) ---
 
+// Deve ser igual ao --reel-size do CSS (em px)
+const SYMBOL_HEIGHT = 110;
+// Quantos símbolos aleatórios passam antes de mostrar o resultado
+const STRIP_SIZE = 20;
+
+/**
+ * Anima um rolo rolando e parando no símbolo correto.
+ *
+ * Como funciona:
+ * 1. Monta uma lista de STRIP_SIZE símbolos aleatórios + o resultado no final
+ * 2. Posiciona a faixa no topo (translateY = 0), mostrando o 1º símbolo
+ * 3. Anima até a posição do último símbolo (o resultado) com ease-out
+ *    → ease-out = começa rápido e desacelera, igual a uma caça-níquel real
+ *
+ * @param {HTMLElement} reelDiv    - O div .reel que será animado
+ * @param {string}      resultado  - Nome do símbolo final (ex: "Tigre")
+ * @param {number}      delay      - Atraso em ms (para escalonar os 3 rolos)
+ * @returns {Promise}              - Resolve quando a animação termina
+ */
+function animateReel(reelDiv, resultado, delay) {
+    return new Promise(resolve => {
+        const strip = reelDiv.querySelector('.reel-strip');
+
+        // Reseta sem animação para não acumular estados
+        strip.style.transition = 'none';
+        strip.style.transform  = 'translateY(0)';
+        strip.innerHTML = '';
+
+        // Preenche a faixa: aleatórios + resultado no final
+        for (let i = 0; i < STRIP_SIZE; i++) {
+            const img = document.createElement('img');
+            img.src = IMAGENS_SIMBOLOS[getRandomSymbol()];
+            strip.appendChild(img);
+        }
+        const imgResultado = document.createElement('img');
+        imgResultado.src = IMAGENS_SIMBOLOS[resultado];
+        imgResultado.alt = resultado;
+        strip.appendChild(imgResultado);
+
+        // getBoundingClientRect() força o browser a "renderizar" o estado atual
+        // antes de aplicar a transição. Sem isso a animação não ocorre.
+        strip.getBoundingClientRect();
+
+        setTimeout(() => {
+            const posicaoFinal = -(STRIP_SIZE * SYMBOL_HEIGHT);
+            strip.style.transition = `transform 1100ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+            strip.style.transform  = `translateY(${posicaoFinal}px)`;
+
+            // Resolve a Promise quando a animação CSS terminar
+            setTimeout(resolve, 1100);
+        }, delay);
+    });
+}
+
 /**
  * Chamada quando o utilizador clica em "GIRAR!".
  */
@@ -374,12 +428,9 @@ async function handleSpin() {
     isSpinning = true;
     ui.spinButton.disabled = true;
     ui.messageBox.textContent = "Girando...";
-    // Guardamos os divs .reel (não as imgs), pois o CSS anima via '.reel.spinning img'
     const reelDivs = Array.from(ui.reelsContainer.children);
-    reelDivs.forEach(reelDiv => {
-        reelDiv.classList.add('spinning'); // classe vai no div pai, não na img
-        reelDiv.querySelector('img').src = "https://assets.codepen.io/134/slot-question.png";
-    });
+    // Desfoca os rolos enquanto busca o resultado no servidor
+    reelDivs.forEach(reelDiv => reelDiv.classList.add('pre-spinning'));
 
     // --- 3. Pagar a Aposta (no Cofre) ---
     try {
@@ -396,39 +447,33 @@ async function handleSpin() {
 
     // --- 4. Chamar o Backend da Roleta ---
     try {
-        // Pausa de 1 segundo para a animação
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Chamada ao backend
-        const requestPromise = fetch(API_URL, { 
+        // Busca o resultado no servidor (sem delay artificial — a animação é o delay)
+        const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bet: currentBet })
         });
-        
-        // Espera pela pausa E pela resposta
-        const [response] = await Promise.all([requestPromise, timeoutPromise]);
 
-        if (!response.ok) {
-            // Se o backend da roleta falhar, devolve a aposta
-            throw new Error('Erro de rede no servidor da roleta.');
-        }
+        if (!response.ok) throw new Error('Erro de rede no servidor da roleta.');
 
-        const data = await response.json(); // Resultado do giro
-        
-        // --- 5. Atualizar o Jogo com o Resultado ---
-        updateReelsUI(data.reels);
+        const data = await response.json();
+
+        // --- 5. Animar os rolos em cascata com o resultado real ---
+        // Remove o desfoque e inicia a animação de cada rolo com atraso escalonado:
+        // rolo 0 → 0ms, rolo 1 → 350ms, rolo 2 → 700ms
+        // Isso cria o efeito "para um por um" dos caça-níqueis reais
+        reelDivs.forEach(reelDiv => reelDiv.classList.remove('pre-spinning'));
+        await Promise.all(
+            data.reels.map((simbolo, i) => animateReel(reelDivs[i], simbolo, i * 350))
+        );
+
         ui.messageBox.textContent = data.message;
-        
+
         if (data.winAmount > 0) {
-            // Se ganhou, paga o prémio e aciona o efeito visual
-            await updateDoc(userDocRef, {
-                balance: increment(data.winAmount)
-            });
+            await updateDoc(userDocRef, { balance: increment(data.winAmount) });
             console.log(`Prémio de ${data.winAmount} pago.`);
 
-            // Adiciona a classe 'winner' em todos os rolos para piscar em dourado
-            // A animação CSS dura 0.5s × 4 repetições = 2s, depois removemos a classe
+            // Pulsa em dourado por 2s (0.5s × 4 repetições definidas no CSS)
             reelDivs.forEach(reelDiv => reelDiv.classList.add('winner'));
             setTimeout(() => {
                 reelDivs.forEach(reelDiv => reelDiv.classList.remove('winner'));
@@ -438,36 +483,39 @@ async function handleSpin() {
     } catch (error) {
         console.error("Erro durante o giro (fetch) ou pagamento:", error);
         ui.messageBox.textContent = "Erro na roleta. A devolver aposta...";
-        // Devolve aposta em caso de erro no backend
+        reelDivs.forEach(reelDiv => reelDiv.classList.remove('pre-spinning'));
         try {
-            await updateDoc(userDocRef, {
-                balance: increment(currentBet)
-            });
+            await updateDoc(userDocRef, { balance: increment(currentBet) });
         } catch (e) {
             console.error("Erro crítico ao devolver aposta:", e);
         }
     } finally {
-        // --- 6. Terminar o Giro (Visual) ---
-        reelDivs.forEach(reelDiv => reelDiv.classList.remove('spinning'));
+        // --- 6. Finalizar ---
         isSpinning = false;
-        // A re-ativação do botão é tratada pelo 'updateBalanceUI'
-        // Mas podemos forçar uma verificação
         const docSnap = await getDoc(userDocRef);
         updateBalanceUI(docSnap.data().balance);
     }
 }
 
 /**
- * Atualiza as imagens dos rolos com o resultado.
- * @param {Array<string>} reelsResult - Array com os nomes dos símbolos (ex: ["Tigre", "7", "Cereja"])
+ * Exibe símbolos de forma estática (sem animação).
+ * Usado na inicialização para mostrar símbolos aleatórios em vez de vazio.
+ * @param {Array<string>} reelsResult - Nomes dos símbolos (ex: ["Tigre", "7", "Cereja"])
  */
 function updateReelsUI(reelsResult) {
-    const reelImages = Array.from(ui.reelsContainer.children).map(reel => reel.querySelector('img'));
-    
-    reelImages.forEach((reelImg, index) => {
-        const simboloNome = reelsResult[index];
-        const simboloImgSrc = IMAGENS_SIMBOLOS[simboloNome] || "https://assets.codepen.io/134/slot-question.png"; // '?' como fallback
-        reelImg.src = simboloImgSrc;
+    const reelDivs = Array.from(ui.reelsContainer.children);
+    reelDivs.forEach((reelDiv, index) => {
+        const strip = reelDiv.querySelector('.reel-strip');
+        // Reseta sem transição para não animar na inicialização
+        strip.style.transition = 'none';
+        strip.style.transform  = 'translateY(0)';
+        strip.innerHTML = '';
+
+        const img = document.createElement('img');
+        const nome = reelsResult[index];
+        img.src = IMAGENS_SIMBOLOS[nome] || '';
+        img.alt = nome || '';
+        strip.appendChild(img);
     });
 }
 
@@ -491,6 +539,21 @@ function main() {
     ui.depositButton.addEventListener('click', () => handleTransaction('deposit'));
     ui.withdrawButton.addEventListener('click', () => handleTransaction('withdraw'));
     ui.spinButton.addEventListener('click', handleSpin);
+
+    // Botões − e + ajustam a aposta dentro dos limites do input
+    document.getElementById('bet-down').addEventListener('click', () => {
+        const input = ui.betAmountInput;
+        const novoValor = parseInt(input.value, 10) - parseInt(input.step, 10);
+        if (novoValor >= parseInt(input.min, 10)) input.value = novoValor;
+        input.dispatchEvent(new Event('input')); // dispara a validação de saldo
+    });
+
+    document.getElementById('bet-up').addEventListener('click', () => {
+        const input = ui.betAmountInput;
+        const novoValor = parseInt(input.value, 10) + parseInt(input.step, 10);
+        if (novoValor <= parseInt(input.max, 10)) input.value = novoValor;
+        input.dispatchEvent(new Event('input'));
+    });
     
     // 2. Ouve por mudanças no valor da aposta para desativar o botão
     ui.betAmountInput.addEventListener('input', async () => {
