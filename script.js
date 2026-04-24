@@ -348,7 +348,7 @@ async function handleTransaction(type) {
 // --- Lógica do Jogo (Girar a Roleta) ---
 
 // Deve ser igual ao --reel-size do CSS (em px)
-const SYMBOL_HEIGHT = 110;
+const SYMBOL_HEIGHT = 130; // deve bater com --reel-size no CSS
 // Quantos símbolos aleatórios passam antes de mostrar o resultado
 const STRIP_SIZE = 20;
 
@@ -561,6 +561,13 @@ function main() {
         const docSnap = await getDoc(doc(db, "artifacts", "cassino-da-sorte", "users", currentUserId));
         const currentBalance = docSnap.data().balance;
         updateBalanceUI(currentBalance); // Re-valida o saldo vs aposta
+    });
+
+    // Adiciona o gradiente de fade em cada rolo (efeito de profundidade)
+    Array.from(ui.reelsContainer.children).forEach(reelDiv => {
+        const fade = document.createElement('div');
+        fade.className = 'reel-fade';
+        reelDiv.appendChild(fade);
     });
 
     // 3. Inicia o "porteiro" do Firebase
