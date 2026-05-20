@@ -1,580 +1,650 @@
-// --- INÍCIO DAS FERRAMENTAS DO FIREBASE ---
-// O 'window.firebase' foi criado no index.html para nos dar acesso a estas ferramentas
 const {
     initializeApp,
     getAuth, signInAnonymously, onAuthStateChanged, signOut,
     getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, increment
 } = window.firebase;
-// --- FIM DAS FERRAMENTAS DO FIREBASE ---
 
-
-// ---------------------------------------------------------------------------------
-// PASSO 1: COLE AS SUAS CHAVES DO FIREBASE AQUI
-// ---------------------------------------------------------------------------------
-// Substitua o comentário abaixo pelo objeto 'firebaseConfig' que copiou do site do Firebase.
 const firebaseConfig = {
-  apiKey: "AIzaSyD79AJDJKB7Lk_opDiHY1tZTN50N5msE9o",
-  authDomain: "cassino-da-sorte-c86e8.firebaseapp.com",
-  projectId: "cassino-da-sorte-c86e8",
-  storageBucket: "cassino-da-sorte-c86e8.firebasestorage.app",
-  messagingSenderId: "354608458657",
-  appId: "1:354608458657:web:bc241db3f07148aedc79e0"
+    apiKey: "AIzaSyD79AJDJKB7Lk_opDiHY1tZTN50N5msE9o",
+    authDomain: "cassino-da-sorte-c86e8.firebaseapp.com",
+    projectId: "cassino-da-sorte-c86e8",
+    storageBucket: "cassino-da-sorte-c86e8.firebasestorage.app",
+    messagingSenderId: "354608458657",
+    appId: "1:354608458657:web:bc241db3f07148aedc79e0"
 };
-
-// ---------------------------------------------------------------------------------
-// PASSO 2: INICIALIZAR O FIREBASE
-// ---------------------------------------------------------------------------------
-// (Não precisa de mexer aqui, apenas cole as suas chaves acima)
 
 let db, auth, app;
-let currentUserId = null;
-let balanceUnsubscribe = null; // Função para parar de "ouvir" o saldo
-let isSpinning = false; // Estado de girar a roleta
+let currentUserId      = null;
+let balanceUnsubscribe = null;
+let isSpinning         = false;
 
-// Dicionário de Imagens
 const IMAGENS_SIMBOLOS = {
     "Laranja": "https://img.icons8.com/fluency/96/orange.png",
-    "Cereja": "https://img.icons8.com/fluency/96/cherry.png",
-    "Sino": "https://img.icons8.com/fluency/96/bell.png",
-    "BAR": "https://img.icons8.com/fluency/96/bar.png",
-    "7": "https://img.icons8.com/fluency/96/7.png",
-    "Tigre": "https://img.icons8.com/fluency/96/tiger.png"
+    "Cereja":  "https://img.icons8.com/fluency/96/cherry.png",
+    "Sino":    "https://img.icons8.com/fluency/96/bell.png",
+    "BAR":     "https://img.icons8.com/fluency/96/bar.png",
+    "7":       "https://img.icons8.com/fluency/96/7.png",
+    "Tigre":   "https://img.icons8.com/fluency/96/tiger.png"
 };
 
-const API_URL = 'http://127.0.0.1:5000/spin';
-
-// --- NOVO ---
-// Pega os nomes dos símbolos para usar no estado inicial
-const symbolNames = Object.keys(IMAGENS_SIMBOLOS);
-/**
- * Retorna um nome de símbolo aleatório da lista
- * @returns {string} Nome de um símbolo (ex: "Tigre")
- */
-const getRandomSymbol = () => symbolNames[Math.floor(Math.random() * symbolNames.length)];
-// --- FIM DO NOVO ---
-
+const API_URL      = 'http://127.0.0.1:5000/spin';
+const symbolNames  = Object.keys(IMAGENS_SIMBOLOS);
+const randomSymbol = () => symbolNames[Math.floor(Math.random() * symbolNames.length)];
+const fmt          = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 try {
-    // Inicializa o Firebase com as chaves que colou acima
-    app = initializeApp(firebaseConfig);
-    
-    // Obtém acesso ao "Cofre" (Banco de Dados)
-    db = getFirestore(app);
-    
-    // Obtém acesso ao "Porteiro" (Autenticação)
+    app  = initializeApp(firebaseConfig);
+    db   = getFirestore(app);
     auth = getAuth(app);
-    
 } catch (e) {
-    console.error("Erro ao inicializar o Firebase. Verifique as suas 'firebaseConfig'.", e);
-    alert("ERRO: Não foi possível ligar ao servidor do jogo. Verifique as suas chaves do Firebase e recarregue a página.");
+    console.error("Erro ao inicializar Firebase.", e);
 }
 
-// ---------------------------------------------------------------------------------
-// O RESTO DO CÓDIGO DO JOGO
-// ---------------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────
+// SESSION STATS
+// ─────────────────────────────────────────────────────────────────
+let sessionWagered = 0;
+let sessionWon     = 0;
+let sessionBest    = 0;
 
+function updateSessionStats(wagered, won) {
+    sessionWagered += wagered;
+    sessionWon     += won;
+    if (won > sessionBest) sessionBest = won;
 
-// --- Mapeamento dos Elementos da UI (Interface do Utilizador) ---
-// Guardamos todos os elementos que vamos manipular num objeto para organizar
-const ui = {
-    // Vistas (Telas)
-    loginView: document.getElementById('login-view'),
-    gameView: document.getElementById('game-view'),
-    walletView: document.getElementById('wallet-view'),
+    const net   = sessionWon - sessionWagered;
+    const netEl = document.getElementById('stat-net');
 
-    // Botões
-    loginButton: document.getElementById('login-button'),
-    logoutButton: document.getElementById('logout-button'),
-    spinButton: document.getElementById('spin-button'),
-    goToWalletButton: document.getElementById('goto-wallet-button'),
-    goToGameButton: document.getElementById('goto-game-button'),
-    depositButton: document.getElementById('deposit-button'),
-    withdrawButton: document.getElementById('withdraw-button'),
+    document.getElementById('stat-wagered').textContent = fmt(sessionWagered);
+    document.getElementById('stat-won').textContent     = fmt(sessionWon);
+    document.getElementById('stat-best').textContent    = fmt(sessionBest);
+    netEl.textContent  = fmt(net);
+    netEl.className    = 'sstat-value ' + (net >= 0 ? 'sstat-green' : 'sstat-red');
+}
 
-    // Elementos de Jogo e Informação
-    reelsContainer: document.getElementById('reels-container'),
-    balanceDisplay: document.getElementById('balance-display'),
-    userIdDisplay: document.getElementById('user-id-display'),
-    messageBox: document.getElementById('message-box'),
-    betAmountInput: document.getElementById('bet-amount'),
-    
-    // Elementos da Carteira
-    walletBalanceDisplay: document.getElementById('wallet-balance'),
-    walletAmountInput: document.getElementById('wallet-amount')
+// ─────────────────────────────────────────────────────────────────
+// JACKPOT COUNTER
+// ─────────────────────────────────────────────────────────────────
+let jackpotValue = 1_000_000 + Math.random() * 150_000;
+
+function startJackpotGrowth() {
+    function tick() {
+        jackpotValue += Math.random() * 80 + 15;
+        const el = document.getElementById('jackpot-amount');
+        if (el) el.textContent = fmt(jackpotValue);
+        setTimeout(tick, 1200 + Math.random() * 2000);
+    }
+    tick();
+}
+
+function resetJackpot() {
+    jackpotValue = 950_000 + Math.random() * 60_000;
+    const el = document.getElementById('jackpot-amount');
+    if (el) el.textContent = fmt(jackpotValue);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// WINS TICKER
+// ─────────────────────────────────────────────────────────────────
+const SEED_WINS = [
+    { symbols: ['Tigre', 'Tigre', 'Tigre'], amount: 50000, type: 'jackpot', player: 'Jogador 7G2K' },
+    { symbols: ['7', '7', '7'],             amount: 2000,  type: 'mega',    player: 'Jogador M9PL' },
+    { symbols: ['BAR', 'BAR', 'BAR'],       amount: 500,   type: 'big',     player: 'Jogador X3FQ' },
+    { symbols: ['Sino', 'Sino', 'Sino'],    amount: 250,   type: 'big',     player: 'Jogador A1KZ' },
+    { symbols: ['7', '7', '7'],             amount: 1000,  type: 'mega',    player: 'Jogador D8NR' },
+    { symbols: ['Cereja', 'Cereja', 'Cereja'], amount: 150, type: 'win',   player: 'Jogador T5WB' },
+    { symbols: ['BAR', 'BAR', 'BAR'],       amount: 750,   type: 'big',     player: 'Jogador R2JH' },
+    { symbols: ['Laranja', 'Laranja', 'Laranja'], amount: 100, type: 'win', player: 'Jogador E6YC' },
+];
+
+function makeTickerItem({ symbols, amount, type, player }) {
+    const div = document.createElement('div');
+    div.className = `ticker-item ticker-${type}`;
+    div.innerHTML =
+        `<span class="ticker-player">${player}</span>` +
+        symbols.map(s => `<img src="${IMAGENS_SIMBOLOS[s]}" alt="${s}">`).join('') +
+        `<span class="ticker-amount">${fmt(amount)}</span>`;
+    return div;
+}
+
+function initTicker() {
+    const track = document.getElementById('wins-ticker-track');
+    if (!track) return;
+    const doubled = [...SEED_WINS, ...SEED_WINS];
+    doubled.forEach(w => track.appendChild(makeTickerItem(w)));
+}
+
+function addWinToTicker(symbols, amount, type) {
+    const track = document.getElementById('wins-ticker-track');
+    if (!track) return;
+    const item = makeTickerItem({ symbols, amount, type, player: 'Você' });
+    item.style.fontWeight = '700';
+    item.style.color = 'var(--gold-light)';
+    track.prepend(item);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PARTICLE SYSTEM
+// ─────────────────────────────────────────────────────────────────
+let particles     = [];
+let partAnimId    = null;
+
+function spawnParticles(count) {
+    const canvas    = document.getElementById('win-canvas');
+    canvas.width    = window.innerWidth;
+    canvas.height   = window.innerHeight;
+    const colors    = ['#d4af37', '#f5e070', '#ffd700', '#fff', '#ff6b6b', '#00e676', '#7c4dff', '#ffec00'];
+    particles       = [];
+
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x:       (0.15 + Math.random() * 0.7) * canvas.width,
+            y:       (0.35 + Math.random() * 0.25) * canvas.height,
+            vx:      (Math.random() - 0.5) * 18,
+            vy:      -(Math.random() * 24 + 8),
+            size:    Math.random() * 14 + 5,
+            color:   colors[Math.floor(Math.random() * colors.length)],
+            rot:     Math.random() * 360,
+            rotSpd:  (Math.random() - 0.5) * 16,
+            gravity: 0.5,
+            opacity: 1,
+            shape:   Math.random() > 0.5 ? 'coin' : 'rect',
+        });
+    }
+}
+
+function drawParticles() {
+    const canvas = document.getElementById('win-canvas');
+    const ctx    = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let alive = false;
+    particles.forEach(p => {
+        if (p.opacity <= 0) return;
+        alive  = true;
+        p.x   += p.vx;
+        p.y   += p.vy;
+        p.vy  += p.gravity;
+        p.rot += p.rotSpd;
+        if (p.y > canvas.height + 60) { p.opacity = 0; return; }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rot * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        if (p.shape === 'coin') {
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.size / 2, p.size / 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        }
+        ctx.restore();
+    });
+
+    if (alive) partAnimId = requestAnimationFrame(drawParticles);
+}
+
+function fadeParticles(delay) {
+    setTimeout(() => {
+        const id = setInterval(() => {
+            particles.forEach(p => { p.opacity -= 0.025; });
+            if (particles.every(p => p.opacity <= 0)) {
+                clearInterval(id);
+                if (partAnimId) { cancelAnimationFrame(partAnimId); partAnimId = null; }
+            }
+        }, 40);
+    }, delay);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// WIN OVERLAY
+// ─────────────────────────────────────────────────────────────────
+const WIN_CONFIGS = {
+    win:     { badge: 'VITÓRIA',         title: 'VOCÊ GANHOU!',   count: 35  },
+    big:     { badge: 'GRANDE VITÓRIA',  title: 'INCRÍVEL!',      count: 75  },
+    mega:    { badge: 'MEGA VITÓRIA',    title: 'SENSACIONAL!',   count: 130 },
+    jackpot: { badge: '🏆  JACKPOT  🏆', title: 'J A C K P O T', count: 230 },
 };
 
-// --- Gestão das Vistas (Telas) ---
+function showWinOverlay(winType, winAmount, symbols) {
+    const overlay  = document.getElementById('win-overlay');
+    const cfg      = WIN_CONFIGS[winType] || WIN_CONFIGS.win;
 
-/**
- * Mostra uma vista (tela) e esconde as outras.
- * @param {string} viewName - O nome da vista a mostrar ('login', 'game', 'wallet')
- */
+    document.getElementById('win-badge').textContent  = cfg.badge;
+    document.getElementById('win-title').textContent  = cfg.title;
+    document.getElementById('win-amount').textContent = fmt(0);
+    document.getElementById('win-symbols').innerHTML  =
+        symbols.map(s => `<img src="${IMAGENS_SIMBOLOS[s]}" alt="${s}">`).join('');
+
+    overlay.className = `win-overlay win-type-${winType}`;
+
+    spawnParticles(cfg.count);
+    drawParticles();
+    fadeParticles(2800);
+
+    animateCounter(document.getElementById('win-amount'), 0, winAmount, 1400);
+
+    if (winType === 'jackpot') setTimeout(resetJackpot, 2200);
+}
+
+function hideWinOverlay() {
+    document.getElementById('win-overlay').classList.add('hidden');
+    if (partAnimId) { cancelAnimationFrame(partAnimId); partAnimId = null; }
+    particles = [];
+    const canvas = document.getElementById('win-canvas');
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function animateCounter(el, from, to, duration) {
+    const start = performance.now();
+    (function step(now) {
+        const t      = Math.min((now - start) / duration, 1);
+        const eased  = 1 - Math.pow(1 - t, 3);
+        el.textContent = fmt(from + (to - from) * eased);
+        if (t < 1) requestAnimationFrame(step);
+    })(start);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// AUTO-SPIN
+// ─────────────────────────────────────────────────────────────────
+let autoSpinActive    = false;
+let autoSpinSelected  = 10;
+let autoSpinRemaining = 0;
+
+function toggleAutoSpinMenu() {
+    if (autoSpinActive) { stopAutoSpin(); return; }
+    document.getElementById('autospin-menu').classList.toggle('hidden');
+}
+
+function startAutoSpin() {
+    document.getElementById('autospin-menu').classList.add('hidden');
+    autoSpinActive    = true;
+    autoSpinRemaining = autoSpinSelected;
+    document.getElementById('autospin-button').classList.add('active');
+    refreshAutoSpinBadge();
+    if (!isSpinning) handleSpin();
+}
+
+function stopAutoSpin() {
+    autoSpinActive    = false;
+    autoSpinRemaining = 0;
+    document.getElementById('autospin-button').classList.remove('active');
+    document.getElementById('autospin-badge').classList.add('hidden');
+}
+
+function refreshAutoSpinBadge() {
+    const badge = document.getElementById('autospin-badge');
+    if (autoSpinActive) {
+        badge.classList.remove('hidden');
+        badge.textContent = autoSpinRemaining === -1 ? '∞' : autoSpinRemaining;
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// QUICK BET BUTTONS
+// ─────────────────────────────────────────────────────────────────
+function syncQuickBetActive(value) {
+    document.querySelectorAll('.btn-qbet').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.bet, 10) === value);
+    });
+}
+
+function initQuickBets() {
+    document.querySelectorAll('.btn-qbet').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const bet = parseInt(btn.dataset.bet, 10);
+            ui.betAmountInput.value = bet;
+            syncQuickBetActive(bet);
+            ui.betAmountInput.dispatchEvent(new Event('input'));
+        });
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// UI MAP
+// ─────────────────────────────────────────────────────────────────
+const ui = {
+    loginView:            document.getElementById('login-view'),
+    gameView:             document.getElementById('game-view'),
+    walletView:           document.getElementById('wallet-view'),
+    loginButton:          document.getElementById('login-button'),
+    logoutButton:         document.getElementById('logout-button'),
+    spinButton:           document.getElementById('spin-button'),
+    goToWalletButton:     document.getElementById('goto-wallet-button'),
+    goToGameButton:       document.getElementById('goto-game-button'),
+    depositButton:        document.getElementById('deposit-button'),
+    withdrawButton:       document.getElementById('withdraw-button'),
+    reelsContainer:       document.getElementById('reels-container'),
+    balanceDisplay:       document.getElementById('balance-display'),
+    userIdDisplay:        document.getElementById('user-id-display'),
+    messageBox:           document.getElementById('message-box'),
+    betAmountInput:       document.getElementById('bet-amount'),
+    walletBalanceDisplay: document.getElementById('wallet-balance'),
+    walletAmountInput:    document.getElementById('wallet-amount'),
+};
+
 function showView(viewName) {
-    // Esconde todas as vistas primeiro
     ui.loginView.classList.add('hidden');
     ui.gameView.classList.add('hidden');
     ui.walletView.classList.add('hidden');
-
-    // Mostra a vista pedida
-    if (viewName === 'login') {
-        ui.loginView.classList.remove('hidden');
-    } else if (viewName === 'game') {
-        ui.gameView.classList.remove('hidden');
-    } else if (viewName === 'wallet') {
-        ui.walletView.classList.remove('hidden');
-    }
+    if (viewName === 'login')  ui.loginView.classList.remove('hidden');
+    if (viewName === 'game')   ui.gameView.classList.remove('hidden');
+    if (viewName === 'wallet') ui.walletView.classList.remove('hidden');
 }
 
-// --- Lógica de Autenticação (Login) ---
-
-/**
- * Chamada quando o utilizador clica em "Entrar como Convidado".
- */
+// ─────────────────────────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────────────────────────
 async function handleGuestLogin() {
-    ui.loginButton.disabled = true;
+    ui.loginButton.disabled    = true;
     ui.loginButton.textContent = "A entrar...";
     try {
         await signInAnonymously(auth);
-        // O onAuthStateChanged vai tratar de mudar a tela
-        console.log("Login anónimo com sucesso.");
-    } catch (error) {
-        console.error("Erro no login anónimo:", error);
-        ui.loginButton.disabled = false;
+    } catch (e) {
+        ui.loginButton.disabled    = false;
         ui.loginButton.textContent = "Entrar como Convidado";
     }
 }
 
-/**
- * Chamada quando o utilizador clica em "Sair".
- */
 async function handleLogout() {
-    try {
-        await signOut(auth);
-        // O onAuthStateChanged vai tratar de mudar a tela
-        console.log("Logout com sucesso.");
-    } catch (error) {
-        console.error("Erro no logout:", error);
-    }
+    try { await signOut(auth); } catch (e) {}
 }
 
-/**
- * A função MAIS IMPORTANTE. Ouve as mudanças de estado de login.
- * Esta função é chamada automaticamente pelo Firebase:
- * 1. Quando a página carrega.
- * 2. Quando o utilizador faz login.
- * 3. Quando o utilizador faz logout.
- * @param {object} user - O objeto do utilizador (ou null se estiver desligado)
- */
 function handleAuthStateChanged(user) {
     if (user) {
-        // --- UTILIZADOR ESTÁ LOGADO ---
-        console.log("Utilizador está logado:", user.uid);
         currentUserId = user.uid;
-        
-        // --- LÓGICA DO NOME DE UTILIZADOR ATUALIZADA ---
-        // Pega os últimos 6 caracteres do ID para criar um "Nome de Jogador"
-        const shortId = currentUserId.slice(-6).toUpperCase();
-        const displayName = `Jogador ${shortId}`;
-        ui.userIdDisplay.textContent = displayName; // Mostra o nome amigável
-        
-        // Prepara o "cofre" do utilizador no banco de dados
+        ui.userIdDisplay.textContent = `Jogador ${currentUserId.slice(-6).toUpperCase()}`;
         setupUserBalance(user.uid);
-        
-        // Começa a "ouvir" as mudanças de saldo
         setupBalanceListener(user.uid);
-        
-        // Mostra a tela do jogo
         showView('game');
-
-        // --- NOVO ---
-        // Define um estado inicial aleatório para os rolos
-        // para não mostrar '?'
-        updateReelsUI([getRandomSymbol(), getRandomSymbol(), getRandomSymbol()]);
-        // --- FIM DO NOVO ---
-        
+        updateReelsUI([randomSymbol(), randomSymbol(), randomSymbol()]);
     } else {
-        // --- UTILIZADOR ESTÁ DESLOGADO ---
-        console.log("Utilizador está deslogado.");
         currentUserId = null;
-        
-        // Para de "ouvir" o saldo antigo
-        if (balanceUnsubscribe) {
-            balanceUnsubscribe();
-            balanceUnsubscribe = null;
-        }
-        
-        // Mostra a tela de login
+        if (balanceUnsubscribe) { balanceUnsubscribe(); balanceUnsubscribe = null; }
         showView('login');
-        ui.loginButton.disabled = false;
+        ui.loginButton.disabled    = false;
         ui.loginButton.textContent = "Entrar como Convidado";
     }
 }
 
-// --- Lógica do Banco de Dados (Saldo) ---
+// ─────────────────────────────────────────────────────────────────
+// DATABASE / BALANCE
+// ─────────────────────────────────────────────────────────────────
+function userDocRef(uid) {
+    return doc(db, "artifacts", "cassino-da-sorte", "users", uid);
+}
 
-/**
- * Verifica se o utilizador já tem um "cofre". Se não, cria um com 100.
- * @param {string} uid - ID único do utilizador
- */
 async function setupUserBalance(uid) {
-    // Cria uma referência para o documento do utilizador no "cofre"
-    const userDocRef = doc(db, "artifacts", "cassino-da-sorte", "users", uid);
-    
     try {
-        const docSnap = await getDoc(userDocRef);
-        
-        if (!docSnap.exists()) {
-            // O utilizador é novo! Cria o "cofre" dele com 100.
-            console.log("Utilizador novo! A criar saldo inicial de 100.");
-            await setDoc(userDocRef, { 
-                balance: 100,
-                createdAt: new Date() // Guarda a data de criação
-            });
-        } else {
-            // O utilizador já existe, não faz nada.
-            console.log("Utilizador já existente encontrado.");
+        const snap = await getDoc(userDocRef(uid));
+        if (!snap.exists()) {
+            await setDoc(userDocRef(uid), { balance: 100, createdAt: new Date() });
         }
-    } catch (error) {
-        console.error("Erro ao verificar/criar saldo do utilizador:", error);
-    }
+    } catch (e) {}
 }
 
-/**
- * "Ouve" o saldo do utilizador em tempo real.
- * @param {string} uid - ID único do utilizador
- */
 function setupBalanceListener(uid) {
-    // Se já estivermos a "ouvir" algo, paramos primeiro
-    if (balanceUnsubscribe) {
-        balanceUnsubscribe();
-    }
-    
-    const userDocRef = doc(db, "artifacts", "cassino-da-sorte", "users", uid);
-    
-    // onSnapshot é a magia do tempo real!
-    // Esta função é chamada automaticamente sempre que o saldo no "cofre" muda.
-    balanceUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const newBalance = data.balance;
-            updateBalanceUI(newBalance);
-        } else {
-            // Isto não deve acontecer se o setupUserBalance funcionou
-            console.warn("Documento do utilizador não encontrado no listener.");
-        }
-    }, (error) => {
-        console.error("Erro ao 'ouvir' o saldo:", error);
+    if (balanceUnsubscribe) balanceUnsubscribe();
+    balanceUnsubscribe = onSnapshot(userDocRef(uid), snap => {
+        if (snap.exists()) updateBalanceUI(snap.data().balance);
     });
 }
 
-/**
- * Atualiza o saldo em TODOS os locais da interface.
- * @param {number} newBalance - O novo valor do saldo
- */
-function updateBalanceUI(newBalance) {
-    // !! ESTA É A LINHA QUE MUDÁMOS !!
-    // Formata o número para o padrão de moeda do Brasil (R$ 10.000,00)
-    const formattedBalance = newBalance.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    });
+function updateBalanceUI(balance) {
+    ui.balanceDisplay.textContent       = fmt(balance);
+    ui.walletBalanceDisplay.textContent = fmt(balance);
 
-    ui.balanceDisplay.textContent = formattedBalance;
-    ui.walletBalanceDisplay.textContent = formattedBalance;
-    
-    // Verifica se o utilizador pode apostar
-    const currentBet = parseInt(ui.betAmountInput.value, 10);
-    if (newBalance < currentBet) {
-        ui.spinButton.disabled = true;
-        ui.messageBox.textContent = "Saldo insuficiente para esta aposta.";
-    } else if (!isSpinning) { // Só re-ativa se não estiver a girar
+    const bet = parseInt(ui.betAmountInput.value, 10);
+    if (balance < bet) {
+        ui.spinButton.disabled    = true;
+        if (!isSpinning) ui.messageBox.textContent = "Saldo insuficiente para esta aposta.";
+        if (autoSpinActive) stopAutoSpin();
+    } else if (!isSpinning) {
         ui.spinButton.disabled = false;
-        ui.messageBox.textContent = "Boa sorte!";
     }
 }
 
-// --- Lógica da Carteira (Depósito/Saque) ---
-
-/**
- * Adiciona ou remove dinheiro fictício do "cofre" do utilizador.
- * @param {'deposit' | 'withdraw'} type - O tipo de transação
- */
+// ─────────────────────────────────────────────────────────────────
+// WALLET
+// ─────────────────────────────────────────────────────────────────
 async function handleTransaction(type) {
-    if (!currentUserId) return; // Não faz nada se não estiver logado
-
+    if (!currentUserId) return;
     const amount = parseInt(ui.walletAmountInput.value, 10);
-    
-    // Validação
-    if (isNaN(amount) || amount <= 0) {
-        alert("Por favor, insira um valor válido.");
-        return;
-    }
-
-    const userDocRef = doc(db, "artifacts", "cassino-da-sorte", "users", currentUserId);
+    if (isNaN(amount) || amount <= 0) { alert("Por favor, insira um valor válido."); return; }
 
     try {
         if (type === 'deposit') {
-            // increment() é uma função segura do Firebase para adicionar valores
-            await updateDoc(userDocRef, {
-                balance: increment(amount)
-            });
-            console.log(`Depósito de ${amount} realizado.`);
-            
-        } else if (type === 'withdraw') {
-            // Para sacar, primeiro lemos o saldo para garantir que não fica negativo
-            const docSnap = await getDoc(userDocRef);
-            const currentBalance = docSnap.data().balance;
-            
-            if (amount > currentBalance) {
-                alert("Não pode sacar mais do que tem!");
-                return;
-            }
-            
-            await updateDoc(userDocRef, {
-                balance: increment(-amount) // Subtrai o valor
-            });
-            console.log(`Saque de ${amount} realizado.`);
+            await updateDoc(userDocRef(currentUserId), { balance: increment(amount) });
+        } else {
+            const snap = await getDoc(userDocRef(currentUserId));
+            if (amount > snap.data().balance) { alert("Não pode sacar mais do que tem!"); return; }
+            await updateDoc(userDocRef(currentUserId), { balance: increment(-amount) });
         }
-        
-        ui.walletAmountInput.value = ""; // Limpa o campo
-
-    } catch (error) {
-        console.error(`Erro ao processar ${type}:`, error);
-        alert(`Erro ao processar ${type}. Tente novamente.`);
+        ui.walletAmountInput.value = "";
+    } catch (e) {
+        alert("Erro ao processar transação.");
     }
 }
 
+// ─────────────────────────────────────────────────────────────────
+// SLOT MACHINE
+// ─────────────────────────────────────────────────────────────────
+const SYMBOL_HEIGHT = 130;
+const STRIP_SIZE    = 20;
 
-// --- Lógica do Jogo (Girar a Roleta) ---
-
-// Deve ser igual ao --reel-size do CSS (em px)
-const SYMBOL_HEIGHT = 130; // deve bater com --reel-size no CSS
-// Quantos símbolos aleatórios passam antes de mostrar o resultado
-const STRIP_SIZE = 20;
-
-/**
- * Anima um rolo rolando e parando no símbolo correto.
- *
- * Como funciona:
- * 1. Monta uma lista de STRIP_SIZE símbolos aleatórios + o resultado no final
- * 2. Posiciona a faixa no topo (translateY = 0), mostrando o 1º símbolo
- * 3. Anima até a posição do último símbolo (o resultado) com ease-out
- *    → ease-out = começa rápido e desacelera, igual a uma caça-níquel real
- *
- * @param {HTMLElement} reelDiv    - O div .reel que será animado
- * @param {string}      resultado  - Nome do símbolo final (ex: "Tigre")
- * @param {number}      delay      - Atraso em ms (para escalonar os 3 rolos)
- * @returns {Promise}              - Resolve quando a animação termina
- */
 function animateReel(reelDiv, resultado, delay) {
     return new Promise(resolve => {
         const strip = reelDiv.querySelector('.reel-strip');
-
-        // Reseta sem animação para não acumular estados
         strip.style.transition = 'none';
         strip.style.transform  = 'translateY(0)';
-        strip.innerHTML = '';
+        strip.innerHTML        = '';
 
-        // Preenche a faixa: aleatórios + resultado no final
         for (let i = 0; i < STRIP_SIZE; i++) {
             const img = document.createElement('img');
-            img.src = IMAGENS_SIMBOLOS[getRandomSymbol()];
+            img.src   = IMAGENS_SIMBOLOS[randomSymbol()];
             strip.appendChild(img);
         }
-        const imgResultado = document.createElement('img');
-        imgResultado.src = IMAGENS_SIMBOLOS[resultado];
-        imgResultado.alt = resultado;
-        strip.appendChild(imgResultado);
+        const imgFinal = document.createElement('img');
+        imgFinal.src   = IMAGENS_SIMBOLOS[resultado];
+        imgFinal.alt   = resultado;
+        strip.appendChild(imgFinal);
 
-        // getBoundingClientRect() força o browser a "renderizar" o estado atual
-        // antes de aplicar a transição. Sem isso a animação não ocorre.
         strip.getBoundingClientRect();
 
         setTimeout(() => {
-            const posicaoFinal = -(STRIP_SIZE * SYMBOL_HEIGHT);
-            strip.style.transition = `transform 1100ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
-            strip.style.transform  = `translateY(${posicaoFinal}px)`;
-
-            // Resolve a Promise quando a animação CSS terminar
+            strip.style.transition = 'transform 1100ms cubic-bezier(0.25, 0.1, 0.25, 1)';
+            strip.style.transform  = `translateY(${-(STRIP_SIZE * SYMBOL_HEIGHT)}px)`;
             setTimeout(resolve, 1100);
         }, delay);
     });
 }
 
-/**
- * Chamada quando o utilizador clica em "GIRAR!".
- */
 async function handleSpin() {
     if (isSpinning || !currentUserId) return;
 
-    const currentBet = parseInt(ui.betAmountInput.value, 10);
-    
-    // --- 1. Verificações Iniciais ---
-    const userDocRef = doc(db, "artifacts", "cassino-da-sorte", "users", currentUserId);
+    const bet     = parseInt(ui.betAmountInput.value, 10);
+    const ref     = userDocRef(currentUserId);
+
+    // Pre-spin balance check
     try {
-        const docSnap = await getDoc(userDocRef);
-        const currentBalance = docSnap.data().balance;
-        if (currentBalance < currentBet) {
+        const snap = await getDoc(ref);
+        if (snap.data().balance < bet) {
             ui.messageBox.textContent = "Saldo insuficiente!";
+            stopAutoSpin();
             return;
         }
     } catch (e) {
-        console.error("Erro ao ler saldo antes de girar:", e);
         ui.messageBox.textContent = "Erro de rede. Tente novamente.";
         return;
     }
-    
-    // --- 2. Iniciar o Giro (Visual) ---
-    isSpinning = true;
-    ui.spinButton.disabled = true;
-    ui.messageBox.textContent = "Girando...";
-    const reelDivs = Array.from(ui.reelsContainer.children);
-    // Desfoca os rolos enquanto busca o resultado no servidor
-    reelDivs.forEach(reelDiv => reelDiv.classList.add('pre-spinning'));
 
-    // --- 3. Pagar a Aposta (no Cofre) ---
+    isSpinning               = true;
+    ui.spinButton.disabled   = true;
+    ui.messageBox.textContent = "Girando...";
+
+    const reelDivs = Array.from(ui.reelsContainer.children);
+    reelDivs.forEach(r => r.classList.add('pre-spinning'));
+
+    // Deduct bet
     try {
-        await updateDoc(userDocRef, {
-            balance: increment(-currentBet)
-        });
-        console.log(`Aposta de ${currentBet} paga.`);
+        await updateDoc(ref, { balance: increment(-bet) });
     } catch (e) {
-        console.error("Erro ao pagar aposta:", e);
-        ui.messageBox.textContent = "Erro ao pagar aposta. Tente novamente.";
-        isSpinning = false; // Permite tentar de novo
-        return; // Não gira se não conseguiu pagar
+        ui.messageBox.textContent = "Erro ao apostar.";
+        isSpinning = false;
+        reelDivs.forEach(r => r.classList.remove('pre-spinning'));
+        return;
     }
 
-    // --- 4. Chamar o Backend da Roleta ---
     try {
-        // Busca o resultado no servidor (sem delay artificial — a animação é o delay)
         const response = await fetch(API_URL, {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bet: currentBet })
+            body:    JSON.stringify({ bet }),
         });
-
-        if (!response.ok) throw new Error('Erro de rede no servidor da roleta.');
-
+        if (!response.ok) throw new Error('Servidor indisponível.');
         const data = await response.json();
 
-        // --- 5. Animar os rolos em cascata com o resultado real ---
-        // Remove o desfoque e inicia a animação de cada rolo com atraso escalonado:
-        // rolo 0 → 0ms, rolo 1 → 350ms, rolo 2 → 700ms
-        // Isso cria o efeito "para um por um" dos caça-níqueis reais
-        reelDivs.forEach(reelDiv => reelDiv.classList.remove('pre-spinning'));
-        await Promise.all(
-            data.reels.map((simbolo, i) => animateReel(reelDivs[i], simbolo, i * 350))
-        );
+        reelDivs.forEach(r => r.classList.remove('pre-spinning'));
+        await Promise.all(data.reels.map((s, i) => animateReel(reelDivs[i], s, i * 350)));
 
-        ui.messageBox.textContent = data.message;
+        if (data.nearMiss) {
+            reelDivs.forEach(r => {
+                r.classList.add('near-miss');
+                setTimeout(() => r.classList.remove('near-miss'), 600);
+            });
+            ui.messageBox.textContent = "😤 Quase! Tente de novo!";
+        } else {
+            ui.messageBox.textContent = data.message;
+        }
 
         if (data.winAmount > 0) {
-            await updateDoc(userDocRef, { balance: increment(data.winAmount) });
-            console.log(`Prémio de ${data.winAmount} pago.`);
+            await updateDoc(ref, { balance: increment(data.winAmount) });
+            updateSessionStats(bet, data.winAmount);
 
-            // Pulsa em dourado por 2s (0.5s × 4 repetições definidas no CSS)
-            reelDivs.forEach(reelDiv => reelDiv.classList.add('winner'));
-            setTimeout(() => {
-                reelDivs.forEach(reelDiv => reelDiv.classList.remove('winner'));
-            }, 2000);
+            reelDivs.forEach(r => r.classList.add('winner'));
+            setTimeout(() => reelDivs.forEach(r => r.classList.remove('winner')), 2200);
+
+            addWinToTicker(data.reels, data.winAmount, data.winType || 'win');
+
+            if (['big', 'mega', 'jackpot'].includes(data.winType)) {
+                stopAutoSpin();
+                showWinOverlay(data.winType, data.winAmount, data.reels);
+            }
+        } else {
+            updateSessionStats(bet, 0);
         }
 
     } catch (error) {
-        console.error("Erro durante o giro (fetch) ou pagamento:", error);
-        ui.messageBox.textContent = "Erro na roleta. A devolver aposta...";
-        reelDivs.forEach(reelDiv => reelDiv.classList.remove('pre-spinning'));
-        try {
-            await updateDoc(userDocRef, { balance: increment(currentBet) });
-        } catch (e) {
-            console.error("Erro crítico ao devolver aposta:", e);
-        }
+        ui.messageBox.textContent = "Servidor indisponível. Devolvendo aposta...";
+        reelDivs.forEach(r => r.classList.remove('pre-spinning'));
+        try { await updateDoc(ref, { balance: increment(bet) }); } catch (e) {}
     } finally {
-        // --- 6. Finalizar ---
         isSpinning = false;
-        const docSnap = await getDoc(userDocRef);
-        updateBalanceUI(docSnap.data().balance);
+        const snap = await getDoc(ref);
+        updateBalanceUI(snap.data().balance);
+
+        if (autoSpinActive) {
+            if (autoSpinRemaining === -1) {
+                setTimeout(handleSpin, 700);
+            } else {
+                autoSpinRemaining--;
+                if (autoSpinRemaining <= 0) {
+                    stopAutoSpin();
+                } else {
+                    refreshAutoSpinBadge();
+                    setTimeout(handleSpin, 700);
+                }
+            }
+        }
     }
 }
 
-/**
- * Exibe símbolos de forma estática (sem animação).
- * Usado na inicialização para mostrar símbolos aleatórios em vez de vazio.
- * @param {Array<string>} reelsResult - Nomes dos símbolos (ex: ["Tigre", "7", "Cereja"])
- */
 function updateReelsUI(reelsResult) {
-    const reelDivs = Array.from(ui.reelsContainer.children);
-    reelDivs.forEach((reelDiv, index) => {
+    Array.from(ui.reelsContainer.children).forEach((reelDiv, i) => {
         const strip = reelDiv.querySelector('.reel-strip');
-        // Reseta sem transição para não animar na inicialização
         strip.style.transition = 'none';
         strip.style.transform  = 'translateY(0)';
-        strip.innerHTML = '';
-
+        strip.innerHTML        = '';
         const img = document.createElement('img');
-        const nome = reelsResult[index];
-        img.src = IMAGENS_SIMBOLOS[nome] || '';
-        img.alt = nome || '';
+        img.src   = IMAGENS_SIMBOLOS[reelsResult[i]] || '';
+        img.alt   = reelsResult[i] || '';
         strip.appendChild(img);
     });
 }
 
-
-// --- Inicialização da Aplicação ---
-
-/**
- * Função principal que é executada quando a página termina de carregar.
- */
+// ─────────────────────────────────────────────────────────────────
+// MAIN
+// ─────────────────────────────────────────────────────────────────
 function main() {
     if (!auth || !db) {
-        console.error("Firebase não foi inicializado corretamente. Verifique o PASSO 1.");
-        return; // Para a execução se o Firebase falhou
+        console.error("Firebase não inicializado.");
+        return;
     }
-    
-    // 1. Liga todos os botões às suas funções
+
     ui.loginButton.addEventListener('click', handleGuestLogin);
     ui.logoutButton.addEventListener('click', handleLogout);
     ui.goToWalletButton.addEventListener('click', () => showView('wallet'));
-    ui.goToGameButton.addEventListener('click', () => showView('game'));
-    ui.depositButton.addEventListener('click', () => handleTransaction('deposit'));
+    ui.goToGameButton.addEventListener('click',   () => showView('game'));
+    ui.depositButton.addEventListener('click',  () => handleTransaction('deposit'));
     ui.withdrawButton.addEventListener('click', () => handleTransaction('withdraw'));
     ui.spinButton.addEventListener('click', handleSpin);
 
-    // Botões − e + ajustam a aposta dentro dos limites do input
     document.getElementById('bet-down').addEventListener('click', () => {
-        const input = ui.betAmountInput;
-        const novoValor = parseInt(input.value, 10) - parseInt(input.step, 10);
-        if (novoValor >= parseInt(input.min, 10)) input.value = novoValor;
-        input.dispatchEvent(new Event('input')); // dispara a validação de saldo
+        const inp = ui.betAmountInput;
+        const v   = parseInt(inp.value, 10) - parseInt(inp.step, 10);
+        if (v >= parseInt(inp.min, 10)) { inp.value = v; syncQuickBetActive(v); }
+        inp.dispatchEvent(new Event('input'));
+    });
+    document.getElementById('bet-up').addEventListener('click', () => {
+        const inp = ui.betAmountInput;
+        const v   = parseInt(inp.value, 10) + parseInt(inp.step, 10);
+        if (v <= parseInt(inp.max, 10)) { inp.value = v; syncQuickBetActive(v); }
+        inp.dispatchEvent(new Event('input'));
     });
 
-    document.getElementById('bet-up').addEventListener('click', () => {
-        const input = ui.betAmountInput;
-        const novoValor = parseInt(input.value, 10) + parseInt(input.step, 10);
-        if (novoValor <= parseInt(input.max, 10)) input.value = novoValor;
-        input.dispatchEvent(new Event('input'));
-    });
-    
-    // 2. Ouve por mudanças no valor da aposta para desativar o botão
     ui.betAmountInput.addEventListener('input', async () => {
         if (!currentUserId) return;
-        const docSnap = await getDoc(doc(db, "artifacts", "cassino-da-sorte", "users", currentUserId));
-        const currentBalance = docSnap.data().balance;
-        updateBalanceUI(currentBalance); // Re-valida o saldo vs aposta
+        const snap = await getDoc(userDocRef(currentUserId));
+        updateBalanceUI(snap.data().balance);
     });
 
-    // Adiciona o gradiente de fade em cada rolo (efeito de profundidade)
+    initQuickBets();
+
+    document.getElementById('autospin-button').addEventListener('click', toggleAutoSpinMenu);
+    document.getElementById('start-autospin-btn').addEventListener('click', startAutoSpin);
+    document.querySelectorAll('.btn-asopt').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.btn-asopt').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            autoSpinSelected = parseInt(btn.dataset.count, 10);
+        });
+    });
+
+    document.addEventListener('click', e => {
+        const menu = document.getElementById('autospin-menu');
+        const btn  = document.getElementById('autospin-button');
+        if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('win-close-btn').addEventListener('click', hideWinOverlay);
+
     Array.from(ui.reelsContainer.children).forEach(reelDiv => {
         const fade = document.createElement('div');
         fade.className = 'reel-fade';
         reelDiv.appendChild(fade);
     });
 
-    // 3. Inicia o "porteiro" do Firebase
-    // A função 'handleAuthStateChanged' será chamada assim que isto for executado
+    startJackpotGrowth();
+    initTicker();
+
     onAuthStateChanged(auth, handleAuthStateChanged);
 }
 
-// Inicia a aplicação
 main();
-

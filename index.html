@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Roboto:wght@400;500;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="style.css">
 
     <script type="module">
@@ -19,6 +18,19 @@
     </script>
 </head>
 <body>
+
+    <!-- ── OVERLAY DE VITÓRIA ── -->
+    <div id="win-overlay" class="win-overlay hidden">
+        <canvas id="win-canvas"></canvas>
+        <div class="win-overlay-inner" id="win-overlay-inner">
+            <div class="win-badge" id="win-badge">VITÓRIA!</div>
+            <div class="win-title" id="win-title">VOCÊ GANHOU!</div>
+            <div class="win-amount" id="win-amount">R$ 0,00</div>
+            <div class="win-symbols" id="win-symbols"></div>
+            <button class="btn btn-golden btn-large" id="win-close-btn">✓ Recolher Prêmio</button>
+        </div>
+    </div>
+
 
     <!-- ── TELA 1: LOGIN ── -->
     <div id="login-view" class="view-container">
@@ -64,14 +76,21 @@
             </div>
         </header>
 
+        <!-- Ticker de vitórias recentes -->
+        <div class="wins-ticker">
+            <div class="wins-ticker-label">🎰 VITÓRIAS RECENTES</div>
+            <div class="wins-ticker-viewport">
+                <div class="wins-ticker-track" id="wins-ticker-track"></div>
+            </div>
+        </div>
+
         <main class="game-main">
 
             <div class="slot-machine">
 
-                <!-- Display de jackpot no topo da máquina -->
                 <div class="jackpot-display">
                     <span class="jackpot-label">✦ JACKPOT ✦</span>
-                    <span class="jackpot-amount">R$ 1.000.000</span>
+                    <span class="jackpot-amount" id="jackpot-amount">R$ 1.000.000,00</span>
                 </div>
 
                 <div class="machine-lights">
@@ -98,6 +117,19 @@
                     <span class="light"></span>
                 </div>
 
+                <!-- Apostas Rápidas -->
+                <div class="quick-bets-row">
+                    <span class="quick-bets-label">APOSTA RÁPIDA</span>
+                    <div class="quick-bets">
+                        <button class="btn-qbet" data-bet="5">MÍN</button>
+                        <button class="btn-qbet active" data-bet="10">R$10</button>
+                        <button class="btn-qbet" data-bet="25">R$25</button>
+                        <button class="btn-qbet" data-bet="50">R$50</button>
+                        <button class="btn-qbet" data-bet="100">R$100</button>
+                        <button class="btn-qbet" data-bet="1000">MÁX</button>
+                    </div>
+                </div>
+
                 <div class="controls-area">
                     <div class="bet-control">
                         <button class="btn-adj" id="bet-down">−</button>
@@ -108,12 +140,50 @@
                         <button class="btn-adj" id="bet-up">+</button>
                     </div>
                     <button id="spin-button" class="btn btn-golden btn-spin">GIRAR!</button>
+                    <div class="autospin-wrap">
+                        <button id="autospin-button" class="btn btn-autospin">
+                            AUTO
+                            <span class="autospin-badge hidden" id="autospin-badge">10</span>
+                        </button>
+                        <div class="autospin-menu hidden" id="autospin-menu">
+                            <div class="autospin-menu-title">Giros Automáticos</div>
+                            <div class="autospin-options">
+                                <button class="btn-asopt active" data-count="10">10</button>
+                                <button class="btn-asopt" data-count="25">25</button>
+                                <button class="btn-asopt" data-count="50">50</button>
+                                <button class="btn-asopt" data-count="-1">∞</button>
+                            </div>
+                            <button class="btn btn-golden btn-small btn-block" id="start-autospin-btn">
+                                ▶ Iniciar Auto-Spin
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="message-area">
                     <p class="message-box" id="message-box">Boa sorte!</p>
                 </div>
 
+            </div>
+
+            <!-- Stats da sessão -->
+            <div class="session-stats">
+                <div class="sstat">
+                    <div class="sstat-label">APOSTADO</div>
+                    <div class="sstat-value" id="stat-wagered">R$ 0,00</div>
+                </div>
+                <div class="sstat">
+                    <div class="sstat-label">GANHO</div>
+                    <div class="sstat-value sstat-green" id="stat-won">R$ 0,00</div>
+                </div>
+                <div class="sstat">
+                    <div class="sstat-label">SALDO LÍQUIDO</div>
+                    <div class="sstat-value" id="stat-net">R$ 0,00</div>
+                </div>
+                <div class="sstat">
+                    <div class="sstat-label">MELHOR JOGADA</div>
+                    <div class="sstat-value sstat-gold" id="stat-best">R$ 0,00</div>
+                </div>
             </div>
 
             <!-- Tabela de prêmios -->
